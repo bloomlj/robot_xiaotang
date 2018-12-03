@@ -6,17 +6,20 @@ int Left_motor_go = 3;  //电机A前进，驱动板A1
 int Left_motor_back = 4; //电机A后退，驱动板A2
 int Right_motor_go = 5; //电机B前进，驱动板B1
 int Right_motor_back = 6; //电机B后退，驱动板B2
+int pwm_big = 255;
+int pwm_small = 0;
 
 int DO1 = A0; //红外对管DO1
 int DO2 = A1; //红外对管DO2
 int DO3 = A2; //红外对管DO3
 int DO4 = A3; //红外对管DO4
-int ledread[4] = {0,0,0,0}; //红外对管扫描结果 无光线返回时，熄灯，输出1
+int ledread[4] = {1,1,1,1}; //红外对管扫描结果 无光线返回时，熄灯，输出1
 
 int Trig = A4;  //超声波，Echo回声脚
 int Echo = A5;  //超声波，Trig触发脚
 float distance = 0.0f; //超声波测得的距离 
 float distance_min = 15;
+#define ultrasonic 0 //开关超声波逻辑
 
 /**************************************************************************
 Arduino 初始化
@@ -79,14 +82,10 @@ void Distance_test(int time)   // 量出前方距离
 **************************************************************************/
 void run(int time)     // 前进
 {
-  //digitalWrite(Right_motor_go,HIGH);  // 右电机前进
-  //digitalWrite(Right_motor_back,LOW);
-  analogWrite(Right_motor_go,180);//PWM比例0~255调速，左右轮差异略增减
-  analogWrite(Right_motor_back,0);
-  //digitalWrite(Left_motor_go,HIGH);  // 左电机前进
-  //digitalWrite(Left_motor_back,LOW);
-  analogWrite(Left_motor_go,180);//PWM比例0~255调速，左右轮差异略增减
-  analogWrite(Left_motor_back,0);
+  digitalWrite(Right_motor_back,LOW);
+  analogWrite(Right_motor_go,pwm_big);//PWM比例0~255调速，左右轮差异略增减
+  digitalWrite(Left_motor_back,LOW);
+  analogWrite(Left_motor_go,pwm_big);//PWM比例0~255调速，左右轮差异略增减
   delay(time);   //执行时间，可以调整
 }
 
@@ -101,27 +100,19 @@ void brake(int time)  //刹车，停车
 
 void left(int time)         //左转(左轮不动，右轮前进)
 {
-  digitalWrite(Right_motor_go,HIGH);  // 右电机前进
   digitalWrite(Right_motor_back,LOW);
-  analogWrite(Right_motor_go,180);
-  analogWrite(Right_motor_back,0);//PWM比例0~255调速
-  digitalWrite(Left_motor_go,LOW);   //左轮后退
+  analogWrite(Right_motor_go,pwm_big);
   digitalWrite(Left_motor_back,LOW);
-  analogWrite(Left_motor_go,0);
-  analogWrite(Left_motor_back,0);//PWM比例0~255调速
+  analogWrite(Left_motor_go,pwm_small);
   delay(time);  //执行时间，可以调整
 }
 
 void right(int time)        //右转(右轮不动，左轮前进)
 {
-  digitalWrite(Right_motor_go,LOW);   //右电机后退
   digitalWrite(Right_motor_back,LOW);
-  analogWrite(Right_motor_go,0);
-  analogWrite(Right_motor_back,0);//PWM比例0~255调速
-  digitalWrite(Left_motor_go,HIGH);//左电机前进
+  analogWrite(Right_motor_go,pwm_small);
   digitalWrite(Left_motor_back,LOW);
-  analogWrite(Left_motor_go,180);
-  analogWrite(Left_motor_back,0);//PWM比例0~255调速
+  analogWrite(Left_motor_go,pwm_big);
   delay(time);  //执行时间，可以调整
 }
 
@@ -130,21 +121,27 @@ void right(int time)        //右转(右轮不动，左轮前进)
 **************************************************************************/
 void loop()
 {
-  ledscan(100);
-  Distance_test(100);
+  ledscan(10); //红外对管扫描
+#if ultrasonic
+  Distance_test(100); //超声波测距
   if (distance < distance_min)  //超声波避障
-    brake(100);
+    0brake(100);
   else
   {
+#endif
     //val = Serial.read(); //读取PC机发送给Arduino的指令或字符
     //红外对管循迹
     if ((ledread[0] == 0) && (ledread[1] == 0) && (ledread[2] == 0) && (ledread[3] == 0))
       run(100);
-    else if ( ((ledread[0] == 0) || (ledread[1] == 0)) && (ledread[2] == 1) && (ledread[3] == 1) )
+    else if ( ((ledread[0] == 0) && (ledread[1] == 0)) && ((ledread[2] == 1) || (ledread[3] == 1)) )
       left(100);
-    else if ((ledread[0] == 1) && (ledread[1] == 1) && ((ledread[2] == 0) || (ledread[3] == 0)))
+    else if ( ((ledread[0] == 1) || (ledread[1] == 1)) && ((ledread[2] == 0) && (ledread[3] == 0)))
       right(1);
+    else if ((ledread[0] == 0) && (ledread[1] == 1) && (ledread[2] == 1) && (ledread[3] == 0))
+      run(100);
     else
       brake(100);
+#if ultrasonic
   }
+#endif
 }
