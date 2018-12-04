@@ -6,7 +6,7 @@ int Left_motor_go = 3;  //电机A前进，驱动板A1
 int Left_motor_back = 4; //电机A后退，驱动板A2
 int Right_motor_go = 5; //电机B前进，驱动板B1
 int Right_motor_back = 6; //电机B后退，驱动板B2
-int pwm_big = 255;
+int pwm_big = 155;
 int pwm_small = 0;
 
 int DO1 = A0; //红外对管DO1
@@ -116,32 +116,54 @@ void right(int time)        //右转(右轮不动，左轮前进)
   delay(time);  //执行时间，可以调整
 }
 
+void back(int time)        //后退
+{
+  digitalWrite(Right_motor_back,pwm_big);
+  analogWrite(Right_motor_go,LOW);
+  digitalWrite(Left_motor_back,pwm_big);
+  analogWrite(Left_motor_go,LOW);
+  delay(time);  //执行时间，可以调整
+}
+
 /**************************************************************************
 主循环
 **************************************************************************/
-void loop()
-{
-  ledscan(10); //红外对管扫描
-#if ultrasonic
-  Distance_test(100); //超声波测距
-  if (distance < distance_min)  //超声波避障
-    0brake(100);
-  else
-  {
-#endif
-    //val = Serial.read(); //读取PC机发送给Arduino的指令或字符
-    //红外对管循迹
-    if ((ledread[0] == 0) && (ledread[1] == 0) && (ledread[2] == 0) && (ledread[3] == 0))
-      run(100);
-    else if ( ((ledread[0] == 0) && (ledread[1] == 0)) && ((ledread[2] == 1) || (ledread[3] == 1)) )
-      left(100);
-    else if ( ((ledread[0] == 1) || (ledread[1] == 1)) && ((ledread[2] == 0) && (ledread[3] == 0)))
-      right(1);
-    else if ((ledread[0] == 0) && (ledread[1] == 1) && (ledread[2] == 1) && (ledread[3] == 0))
-      run(100);
-    else
+void loop() {
+    while (Serial.available() > 0) {
+    char cmd = Serial.read();
+    Serial.println(cmd);        
+
+    if(cmd == 'w'){
+      run(1000); 
       brake(100);
-#if ultrasonic
-  }
-#endif
+    }
+    else if(cmd == 's'){
+      back(1000);
+      brake(100);
+      }
+    else if(cmd == 'a'){
+      left(1500);
+      brake(100);
+      }
+    else if(cmd == 'd'){
+      right(1500);
+      brake(100);
+      }
+    else if(cmd == 'q'){
+      ledscan(10); //红外对管扫描
+      if ((ledread[0] == 0) && (ledread[1] == 0) && (ledread[2] == 0) && (ledread[3] == 0))
+        run(100);
+      else if ( ((ledread[0] == 0) && (ledread[1] == 0)) && ((ledread[2] == 1) || (ledread[3] == 1)) )
+        left(100);
+      else if ( ((ledread[0] == 1) || (ledread[1] == 1)) && ((ledread[2] == 0) && (ledread[3] == 0)))
+        right(1);
+      else if ((ledread[0] == 0) && (ledread[1] == 1) && (ledread[2] == 1) && (ledread[3] == 0))
+        run(100);
+      else
+        brake(100);
+    }
+    
+    else brake(100);
+     Serial.println(ledread[0]) ;
+      }
 }
